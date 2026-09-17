@@ -87,10 +87,11 @@ CrossMosa 把範圍收窄，專心做三件事:
 1. **介面與內文都是繁體中文**——選單、檔名、書名、OPDS 書庫、書的內文。
 2. **閱讀優先**。這台機器只有 320 KB RAM，任何功能都在跟閱讀搶記憶體。
    凡是會讓翻頁掉字、讓長章節排不出來的東西，一律讓路（見「與原版的差異」）。
-3. **只針對 X3 調校**。原版同時支援 X3 與 X4;本分支的顯示波形時間、記憶體預算、
-   字型尺寸全部照 X3 的 792×528 面板與這顆 ESP32-C3 實測而定。
+3. **同時支援原版 X3 與 X4**。原版與本分支都使用 ESP32-C3 的執行期機型辨識；
+   X3 的顯示波形與灰階路徑只在 X3 啟用，X4 使用 SSD1677 的原生路徑。
    X3 有兩種螢幕驅動晶片：**UC8253**（較早的機器）與 **UC8279**（較新的機器）。
    本版開機時會自己認出是哪一種，**兩種都已經在實機上刷過**。
+   原版 X4 尚待本分支實機驗證；X4 Pro、X4 Classic 不在支援範圍內。
 
 這是個人專案，不是產品。**沒有任何隸屬於 Xteink 或原版 CrossPoint 專案的關係。**
 
@@ -191,14 +192,14 @@ CrossMosa 是下班後的個人專案。如果它讓你的 X3 變好用了，幾
    （避免日後誤刷舊版）。失敗的話長按電源 5–10 秒強制重開，
    重新下載檔案再試（多半是檔案沒抓完整）。
 
-這條路是 **X3 限定**（X4 原廠韌體沒有這個組合鍵），而且**不需要電腦偵測得到機器**——
+這條路是 **X3 原廠韌體限定**（X4 原廠韌體沒有這個組合鍵；CrossMosa 安裝後的救援模式另計），而且**不需要電腦偵測得到機器**——
 線材、Hub、驅動有問題、甚至 USB 被鎖，都不影響。社群文件記載它**連 USB-locked
 的機器也適用**。維護者自己的第一次就是這樣刷的（Mac 的 Hub 一直偵測不到機器）。
 
 **方法 B — 網頁 flasher（USB 偵測得到的話）**
 
 1. USB-C 接電腦，喚醒裝置。
-2. 開 https://crosspointreader.com/#flash-tools,選 **X3**，點 **Custom .bin**,
+2. 開 https://crosspointreader.com/#flash-tools，選 **X3 或 X4**，點 **Custom .bin**，
    上傳 zip 裡的 `update.bin`。
 3. 瀏覽器的序列裝置選單看不到機器?換一個 USB 埠、不要經過 Hub、換一個支援
    WebSerial 的瀏覽器(Chrome/Edge)。還是不行就回方法 A，不用糾結。
@@ -519,7 +520,7 @@ core 裡，不是本專案能改的)，兩次建置就會差幾十個位元組�
 
 **CrossMosa 的一切都建立在 [CrossPoint](https://github.com/crosspoint-reader/crosspoint-reader) 上面。**
 閱讀引擎、EPUB 解析、排版、活動框架、網頁介面、OPDS、Calibre 流程——這些都是原版寫的，
-本分支只是在上面做中文化與 X3 特化。
+本分支只是在上面做中文化，以及依機型分流的 X3 顯示支援；原版 X4 路徑也保留。
 
 - 原版作者:**Dave Allie** 與 CrossPoint 貢獻者們。授權 MIT,`LICENSE` 原封保留。
 - 原版的錯誤回報請發到[原版 repo](https://github.com/crosspoint-reader/crosspoint-reader/issues)，
@@ -559,7 +560,7 @@ core 裡，不是本專案能改的)，兩次建置就會差幾十個位元組�
   SD 救援模式在韌體卡住開機迴圈時進不去，部分機器的 USB 也沒有資料傳輸。
 - **與 Xteink 無關，與原版 CrossPoint 專案也無隸屬關係。** 兩者都不為這個分支負責。
 - **驗證主力是一台 UC8279 新批次 X3**，舊批次（UC8253）由使用者回報刷機成功。
-  沒有 X4，沒有自動化的硬體測試。
+  原版 X4 的程式路徑已接回，但本分支尚未完成 X4 實機驗證；目前也沒有完整的自動化硬體測試。
   很多改動的驗證方式就是「用了幾天沒出事」。
 - **沒有遙測。** 本韌體不會回報使用狀況給任何人。Wi-Fi 憑證、閱讀進度、書籤只存在你自己的
   SD 卡上(`/.crossmosa/`)。裝置只有在你主動要求時才連外:連 Wi-Fi 後對時(NTP)、
@@ -606,9 +607,11 @@ Version: `2.0.1`
 
 ## What it is
 
-A narrow fork of CrossPoint with one goal: read Traditional Chinese books well on the X3.
-It trades away breadth (other languages, other formats, the X4) for Chinese typography,
-a reading-first memory policy, and X3-specific display tuning. Personal project, not a product.
+A narrow fork of CrossPoint with one goal: read Traditional Chinese books well on the original X3 and X4.
+It trades away breadth (other languages and some upstream formats) for Chinese typography,
+a reading-first memory policy, and X3-specific display tuning while retaining the
+original X4 runtime path. The original X4 still needs hardware validation on this fork;
+X4 Pro and X4 Classic are out of scope. Personal project, not a product.
 Not affiliated with Xteink or with the upstream CrossPoint project.
 
 ## Sound familiar?
@@ -895,8 +898,8 @@ Issues for missing characters or bugs are welcome too.
 
 This project ships **no book content and no book sources** — bring your own legally obtained, DRM-free EPUBs (publisher or indie-store direct sales, public-domain libraries, your own documents). Support the authors. Flash at your own risk; third-party firmware can leave a device unbootable. Not affiliated
 with Xteink or upstream. Verified primarily on **one newer-batch UC8279 X3**; an
-older-batch (UC8253) unit was **flashed successfully by a user**. No X4 — much of the verification is "used it for
-a few days and nothing broke". **No telemetry**: credentials, progress and bookmarks stay on
+older-batch (UC8253) unit was **flashed successfully by a user**. The original X4 path is
+not yet hardware-verified on this fork, so treat X4 support as experimental. **No telemetry**: credentials, progress and bookmarks stay on
 your SD card, and the device only reaches the network when you ask it to (NTP after joining
 Wi-Fi, your own OPDS server, Calibre). The upstream OTA update check is removed, so this
 firmware never contacts a project server on its own. Provided AS IS, see `LICENSE`.

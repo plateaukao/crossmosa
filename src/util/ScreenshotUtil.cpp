@@ -10,6 +10,7 @@
 #include <Logging.h>
 
 #include <cstring>
+#include <array>
 #include <string>
 
 #include "Bitmap.h"  // Required for BmpHeader struct definition
@@ -180,8 +181,10 @@ bool ScreenshotUtil::saveFramebufferAsBmp(const char* filename, const uint8_t* f
   }
 
   const uint32_t rowSizePadded = (phyWidth + 31) / 32 * 4;
-  // Max row size for 528px height (X3) after rotation = 68 bytes; use fixed buffer to avoid VLA
-  constexpr size_t kMaxRowSize = 68;
+  // The rotated BMP row is as wide as the framebuffer's physical height:
+  // 528 pixels on X3 and 480 pixels on X4. Keep this bounded by the largest
+  // original C3 panel geometry.
+  constexpr size_t kMaxRowSize = (EInkDisplay::X3_DISPLAY_HEIGHT + 31) / 32 * 4;
   if (rowSizePadded > kMaxRowSize) {
     LOG_ERR("SCR", "Row size %u exceeds buffer capacity", rowSizePadded);
     // Explicitly close() file before calling Storage.remove()
@@ -191,8 +194,8 @@ bool ScreenshotUtil::saveFramebufferAsBmp(const char* filename, const uint8_t* f
   }
 
   // rotate the image 90d counter-clockwise on-the-fly while writing to save memory
-  uint8_t rowBuffer[kMaxRowSize];
-  memset(rowBuffer, 0, rowSizePadded);
+  std::array<uint8_t, kMaxRowSize> rowBuffer{};
+  memset(rowBuffer.data(), 0, rowSizePadded);
 
   for (int outY = 0; outY < phyHeight; outY++) {
     for (int outX = 0; outX < phyWidth; outX++) {
@@ -204,11 +207,11 @@ bool ScreenshotUtil::saveFramebufferAsBmp(const char* filename, const uint8_t* f
       uint8_t pixel = (framebuffer[fbIndex] >> (7 - (srcX % 8))) & 0x01;
       rowBuffer[outX / 8] |= pixel << (7 - (outX % 8));
     }
-    if (file.write(rowBuffer, rowSizePadded) != rowSizePadded) {
+    if (file.write(rowBuffer.data(), rowSizePadded) != rowSizePadded) {
       write_error = true;
       break;
     }
-    memset(rowBuffer, 0, rowSizePadded);  // Clear the buffer for the next row
+    memset(rowBuffer.data(), 0, rowSizePadded);  // Clear the buffer for the next row
   }
 
   // Explicitly close() file before calling Storage.remove()

@@ -27,7 +27,8 @@ constexpr uint32_t XTG_MAGIC = 0x00475458;  // "XTG\0" for 1-bit page data
 // "XTH\0" = 0x58, 0x54, 0x48, 0x00
 constexpr uint32_t XTH_MAGIC = 0x00485458;  // "XTH\0" for 2-bit page data
 
-// XTeink X4 display resolution
+// XTeink X4 display resolution. XTC stores pre-rendered pages, so these are
+// file-format defaults for the original X4, not the runtime display geometry.
 constexpr uint16_t DISPLAY_WIDTH = 480;
 constexpr uint16_t DISPLAY_HEIGHT = 800;
 

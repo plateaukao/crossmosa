@@ -147,6 +147,14 @@ build_clean() {
   "$PIO" run -e "$ENV_NAME"
 }
 sha_of() { sha256sum "$1" | awk '{print $1}'; }
+file_size() {
+  local path="$1" size
+  if size="$(stat -c%s "$path" 2>/dev/null)"; then
+    printf '%s\n' "$size"
+  else
+    stat -f%z "$path"
+  fi
+}
 
 say "build 1/$(( VERIFY_REPRODUCIBLE + 1 )) (clean)"
 build_clean
@@ -169,7 +177,7 @@ else
   printf '  reproducibility check SKIPPED (--no-verify)\n'
 fi
 
-FLASH_BYTES="$(stat -c%s "$FW")"
+FLASH_BYTES="$(file_size "$FW")"
 
 # ---------------------------------------------------------------------------
 # Firmware zip
@@ -203,7 +211,7 @@ cp "$GUIDE_EPUB" "$OUT_DIR/"
 # Bare update.bin as its own asset too: existing users upgrade phone-only
 # (download -> web upload -> Settings -> SD firmware update) with no unzip step.
 cp "$FW_STAGE/update.bin" "$OUT_DIR/update.bin"
-say "guide: $(basename "$GUIDE_EPUB") ($(stat -c%s "$GUIDE_EPUB") bytes, in the firmware zip and standalone)"
+say "guide: $(basename "$GUIDE_EPUB") ($(file_size "$GUIDE_EPUB") bytes, in the firmware zip and standalone)"
 
 cat > "$FW_STAGE/刷機說明.txt" <<EOF
 CrossMosa $VERSION_FULL — 刷機說明
@@ -234,11 +242,11 @@ A. SD 卡首刷(推薦;機器不用接電腦,檔案用讀卡機放進 SD 卡即�
    update.bin → SD 卡根目錄 → 關機 →
    按住左側「上一頁」鍵+電源鍵到出現載入畫面 → 約五分鐘刷完自動開機。
    檔名已預先改好——這顆就是其他教學裡說要改名的 firmware.bin。
-   X3 限定;失敗就長按電源強制重開、重新下載再試。
+   X3 原廠韌體限定;原版 X4 請用網頁 flasher 或 esptool 首刷。失敗就長按電源強制重開、重新下載再試。
 
 B. 網頁 flasher(USB 偵測得到時)
    USB-C 接電腦並喚醒裝置 → https://crosspointreader.com/#flash-tools
-   → 選 X3 → Custom .bin → 上傳本 zip 的 update.bin
+   → 選 X3 或 X4 → Custom .bin → 上傳本 zip 的 update.bin
 
 C. SD 卡更新(已裝 CrossMosa 之後的升級)
    update.bin 複製到 SD 卡根目錄 → 裝置上「設定 → 系統 →
@@ -280,7 +288,7 @@ EOF
 FW_ZIP="$OUT_DIR/crossmosa-$VERSION-firmware.zip"
 rm -f "$FW_ZIP"
 make_zip "$FW_ZIP" "$FW_STAGE"
-say "wrote $FW_ZIP ($(stat -c%s "$FW_ZIP") bytes)"
+say "wrote $FW_ZIP ($(file_size "$FW_ZIP") bytes)"
 
 # ---------------------------------------------------------------------------
 # SD reading fonts — licence-checked, then zipped
@@ -429,7 +437,7 @@ EOF
   SD_ZIP="$OUT_DIR/crossmosa-$VERSION-sd-fonts.zip"
   rm -f "$SD_ZIP"
   make_zip "$SD_ZIP" "$SD_STAGE"
-  say "wrote $SD_ZIP ($(stat -c%s "$SD_ZIP") bytes)"
+  say "wrote $SD_ZIP ($(file_size "$SD_ZIP") bytes)"
 fi
 
 # ---------------------------------------------------------------------------
@@ -524,7 +532,7 @@ EOF
   WP_ZIP="$OUT_DIR/crossmosa-$VERSION-wallpapers.zip"
   rm -f "$WP_ZIP"
   make_zip "$WP_ZIP" "$WP_STAGE"
-  say "wrote $WP_ZIP ($(stat -c%s "$WP_ZIP") bytes)"
+  say "wrote $WP_ZIP ($(file_size "$WP_ZIP") bytes)"
 fi
 
 # ---------------------------------------------------------------------------

@@ -227,6 +227,14 @@ XtcError XtcParser::readFirstPageInfo() {
   m_defaultWidth = entry.width;
   m_defaultHeight = entry.height;
 
+  // XTC is the original X4's pre-rendered format. Reject files for another
+  // panel geometry before a reader allocates or renders page data.
+  if (m_defaultWidth != DISPLAY_WIDTH || m_defaultHeight != DISPLAY_HEIGHT) {
+    LOG_DBG("XTC", "Unsupported page geometry: %ux%u (expected %ux%u)", m_defaultWidth, m_defaultHeight,
+            DISPLAY_WIDTH, DISPLAY_HEIGHT);
+    return XtcError::CORRUPTED_HEADER;
+  }
+
   LOG_DBG("XTC", "Page table validated: %u pages, default %dx%d", m_header.pageCount, m_defaultWidth, m_defaultHeight);
   return XtcError::OK;
 }
@@ -259,6 +267,11 @@ bool XtcParser::readPageTableEntry(uint32_t pageIndex, PageInfo& info) {
   info.size = entry.dataSize;
   info.width = entry.width;
   info.height = entry.height;
+  if (info.width != m_defaultWidth || info.height != m_defaultHeight) {
+    LOG_DBG("XTC", "Page %lu geometry differs: %ux%u (expected %ux%u)", pageIndex, info.width, info.height,
+            m_defaultWidth, m_defaultHeight);
+    return false;
+  }
   info.bitDepth = m_bitDepth;
   return true;
 }
@@ -437,6 +450,13 @@ size_t XtcParser::loadPage(uint32_t pageIndex, uint8_t* buffer, size_t bufferSiz
     return 0;
   }
 
+  if (pageHeader.width != page.width || pageHeader.height != page.height) {
+    LOG_DBG("XTC", "Page %u geometry mismatch: header=%ux%u table=%ux%u", pageIndex, pageHeader.width,
+            pageHeader.height, page.width, page.height);
+    m_lastError = XtcError::CORRUPTED_HEADER;
+    return 0;
+  }
+
   // Calculate bitmap size based on bit depth
   // XTG (1-bit): Row-major, ((width+7)/8) * height bytes
   // XTH (2-bit): Two bit planes, column-major, ((width * height + 7) / 8) * 2 bytes
@@ -498,6 +518,10 @@ XtcError XtcParser::loadPageStreaming(uint32_t pageIndex,
   const uint32_t expectedMagic = (m_bitDepth == 2) ? XTH_MAGIC : XTG_MAGIC;
   if (headerRead != sizeof(XtgPageHeader) || pageHeader.magic != expectedMagic) {
     return XtcError::READ_ERROR;
+  }
+
+  if (pageHeader.width != page.width || pageHeader.height != page.height) {
+    return XtcError::CORRUPTED_HEADER;
   }
 
   // Calculate bitmap size based on bit depth

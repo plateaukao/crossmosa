@@ -269,8 +269,25 @@ def serial_worker(ser, kwargs: dict[str, str]) -> None:
                 screenshot_data += data
                 if len(screenshot_data) == screenshot_size:
                     if Image:
-                        img = Image.frombytes("1", (800, 480), screenshot_data)
-                        # We need to rotate the image because the raw data is in landscape mode
+                        # The C3 firmware reports the physical framebuffer size
+                        # before writing it. The raw framebuffer is stored in
+                        # panel orientation; rotate it into the user's portrait
+                        # view. X4 is 800x480 and X3 is 792x528.
+                        screenshot_dimensions = {
+                            800 * 480 // 8: (800, 480),
+                            792 * 528 // 8: (792, 528),
+                        }.get(screenshot_size)
+                        if screenshot_dimensions is None:
+                            print(
+                                f"{Fore.YELLOW}Unknown screenshot buffer size "
+                                f"{screenshot_size}; saving raw data{Style.RESET_ALL}"
+                            )
+                            with open("screenshot.raw", "wb") as f:
+                                f.write(screenshot_data)
+                            expecting_screenshot = False
+                            screenshot_data = b""
+                            continue
+                        img = Image.frombytes("1", screenshot_dimensions, screenshot_data)
                         img = img.transpose(Image.ROTATE_270)
                         img.save("screenshot.bmp")
                         print(

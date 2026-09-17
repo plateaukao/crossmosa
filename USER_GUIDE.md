@@ -1,12 +1,14 @@
 # CrossMosa User Guide
 
-Welcome to the **CrossMosa** firmware. This is a Traditional-Chinese / X3-focused fork of CrossPoint. This guide outlines the hardware controls, navigation, and reading features of the device. Differences from upstream CrossPoint are noted where they matter.
+Welcome to the **CrossMosa** firmware. This is a Traditional-Chinese fork of CrossPoint for the original ESP32-C3 Xteink X3 and X4. This guide outlines the hardware controls, navigation, and reading features of the device. Differences from upstream CrossPoint are noted where they matter.
 
 ## Panel compatibility (who should flash 2.0.0-rc.1)
 
 Newer Xteink X3 units use a **UC8279** display controller (older batches use **UC8253**). Firmware 1.x does not drive UC8279, so after flashing 1.x the screen may freeze on the “update complete” page while the device is still running (a data directory appears on the SD card). **Flash this 2.0.0-rc.1 build** if that is you.
 
-**If your screen already updates normally, you do not need to flash.** This release was verified primarily on one newer-batch UC8279 X3; there is currently **no older-batch (UC8253) unit available to test**. CrossMosa does not target the X4.
+**If your screen already updates normally, you do not need to flash.** The X4 path shares the upstream runtime-selected C3 firmware, but this branch still requires hardware validation on an original X4 before it should be treated as a production release. X4 Pro and X4 Classic are not supported by this branch.
+
+See [Original X4 support](docs/X4_SUPPORT.md) for the hardware matrix and validation status.
 
 - [CrossMosa User Guide](#crossmosa-user-guide)
   - [Panel compatibility (who should flash 2.0.0-rc.1)](#panel-compatibility-who-should-flash-200-rc1)
@@ -54,7 +56,7 @@ Newer Xteink X3 units use a **UC8279** display controller (older batches use **U
 
 ## 1. Hardware Overview
 
-CrossMosa is built and verified for the **Xteink X3**. The device uses the standard X3 buttons (in the same layout as the manufacturer firmware, by default):
+CrossMosa supports the original **Xteink X3 and X4**. The device uses the standard buttons (in the same layout as the manufacturer firmware, by default):
 
 ### Button Layout
 
@@ -230,7 +232,7 @@ The Settings screen allows you to configure the device's behavior. There are a f
 
   Classic, Lyra, and RoundedRaff are retired and no longer appear in Settings. An older saved theme id is migrated to one of the three Formosa options on load.
 
-- **Sunlight Fading Fix**: Upstream CrossPoint setting for white-shell **X4** units that fade in direct sunlight. CrossMosa does not target the X4; leave this off.
+- **Sunlight Fading Fix**: Upstream CrossPoint setting for white-shell **X4** units that fade in direct sunlight. It is available for the original X4; leave it off unless your unit needs it.
 
 > [!NOTE]
 > A battery charging indicator is shown on the battery icon whenever the device is actively charging.

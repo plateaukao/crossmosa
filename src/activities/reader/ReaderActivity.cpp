@@ -3,6 +3,7 @@
 
 #include <FsHelpers.h>
 #include <HalStorage.h>
+#include <HalGPIO.h>
 #include <I18n.h>
 #include <Memory.h>
 
@@ -80,6 +81,14 @@ std::unique_ptr<Epub> ReaderActivity::loadEpub(const std::string& path) {
 }
 
 std::unique_ptr<Xtc> ReaderActivity::loadXtc(const std::string& path) {
+  // XTC pages are pre-rendered for the original X4's 480x800 panel. They are
+  // not a portable ebook layout, so do not let an X3 render them through the
+  // X4 coordinate/bitmap path.
+  if (!gpio.deviceIsX4()) {
+    LOG_ERR("READER", "XTC is only supported on the original X4");
+    return nullptr;
+  }
+
   if (!Storage.exists(path.c_str())) {
     LOG_ERR("READER", "File does not exist: %s", path.c_str());
     return nullptr;

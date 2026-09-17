@@ -7,6 +7,7 @@
 #include <Epub.h>
 #include <FsHelpers.h>
 #include <GfxRenderer.h>
+#include <HalGPIO.h>
 #include <JpegToBmpConverter.h>
 #include <esp_heap_caps.h>
 #include <HalStorage.h>
@@ -50,6 +51,12 @@ void HomeActivity::loadRecentBooks(int maxBooks) {
 
     // Skip if file no longer exists
     if (RecentBooksStore::isMissing(book)) {
+      continue;
+    }
+
+    // XTC is a pre-rendered original-X4 format and is not an X3 reader input.
+    // Drop stale XTC entries when an SD card is moved between the two devices.
+    if (gpio.deviceIsX3() && FsHelpers::hasXtcExtension(book.path)) {
       continue;
     }
 
