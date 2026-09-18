@@ -1,4 +1,4 @@
-# wallpapers — X3 待機壁紙:50 張世界名畫 + 轉檔工具
+# wallpapers — X3/X4 待機壁紙:50 張世界名畫 + 轉檔工具
 
 X3 闔上之後不是黑畫面,是一幅畫。
 
@@ -17,7 +17,7 @@ X3 闔上之後不是黑畫面,是一幅畫。
 
 > ⚠️ SD 根目錄**不要**放單獨一個 `/sleep.bmp` —— 它會優先、固定顯示、不輪播。
 
-橫式構圖的那幾張是**整張轉 90 度**存的(待機畫面固定跑 528×792 直向,韌體不會自動轉正)。
+橫式構圖的那幾張是**整張轉 90 度**存的(待機畫面以直向尺寸輸出,韌體不會自動轉正)。
 看到橫的畫時,把裝置**往順時針方向轉 90 度**。
 
 ---
@@ -28,7 +28,7 @@ X3 闔上之後不是黑畫面,是一幅畫。
 忠實攝影翻拍在美國不產生新的著作權)。清單、出處檔名與每一筆的取捨理由寫在
 [`artworks.py`](artworks.py) 的註解裡。
 
-挑選標準只有一個:**在 4 階灰階、528×792、沒有背光的螢幕上,這張畫還是不是那張畫。**
+挑選標準只有一個:**在 4 階灰階、目標螢幕尺寸、沒有背光的螢幕上,這張畫還是不是那張畫。**
 這跟「這張畫有沒有名」是兩回事,好幾張名畫因此被換掉:
 
 - **透納《被拖去解體的戰艦無畏號》→ 換掉。** 透納那種柔霧氛圍靠的是低幅度的局部對比,
@@ -62,7 +62,7 @@ X3 闔上之後不是黑畫面,是一幅畫。
 |---|---|---|
 | 壓縮 | **未壓縮 BI_RGB(compression=0)** | ⚠️ 最常錯:匯出時選到 **RLE 壓縮**會被裝置直接跳過 |
 | 位元深度 | 1/2/4/8/24/32 bpp | 名畫管線輸出 **2-bit**,通用轉檔輸出 **8-bit 灰階** |
-| 尺寸 | ≤ 2048×3072 | 輸出 **528×792**(直向,1:1 對上待機,裝置不縮放) |
+| 尺寸 | ≤ 2048×3072 | X3 輸出 **528×792**；X4 輸出 **480×800**(直向,1:1 對上待機) |
 | 副檔名 | `.bmp` | 檔名開頭是 `.` 或放在子資料夾會被裝置忽略 |
 
 ---
@@ -79,7 +79,7 @@ python3 wallpapers/make-wallpaper.py --size 792x528  # 換目標尺寸(橫向的
 python3 wallpapers/make-wallpaper.py --tidy      # 把用過的非 bmp 原檔移到 sleep/_src/ 保留
 ```
 
-- **cover(預設)**:縮放後裁切,填滿整個 528×792(不留邊,但邊緣可能被切掉)。
+- **cover(預設)**:縮放後裁切,填滿指定的目標尺寸(不留邊,但邊緣可能被切掉)。
 - **fit**:完整放入、比例不變,不足處用 `--pad` 的顏色補滿。
 
 轉完會**直接解析輸出 BMP 的標頭 bytes**(寬高 / bpp / compression),用與韌體
@@ -90,7 +90,8 @@ python3 wallpapers/make-wallpaper.py --tidy      # 把用過的非 bmp 原檔移
 ```bash
 pip install pillow numpy
 python3 wallpapers/fetch_sources.py        # 依 artworks.py 從 Wikimedia Commons 下載原圖
-python3 wallpapers/make-art-wallpapers.py  # 全部 50 張 → <repo>/sleep/<slug>.bmp
+python3 wallpapers/make-art-wallpapers.py  # 全部 50 張 → <repo>/sleep/<slug>.bmp (X3 528×792)
+python3 wallpapers/make-art-wallpapers.py --size 480x800  # 全部 50 張 → X4 portrait
 python3 wallpapers/make-art-wallpapers.py mona_lisa great_wave   # 或只做指定的 slug
 ```
 
@@ -110,7 +111,7 @@ python3 wallpapers/make-art-wallpapers.py mona_lisa great_wave   # 或只做指�
 ## 正式管線(經實機驗證,每一條都踩過坑,別亂改)
 
 ```
-原圖 → 灰階 → autocontrast(cutoff=1) → Lanczos 縮 528×792(最終顯示解析度)
+原圖 → 灰階 → autocontrast(cutoff=1) → Lanczos 縮到目標尺寸(最終顯示解析度)
      → Floyd-Steinberg dither(僅畫作區,4 階) → 疊乾淨標籤(就近取整,不 dither)
      → 橫式最後無損旋轉 90° → 寫 2-bit 原生 BMP(色盤 0/85/170/255)
 ```
@@ -122,7 +123,7 @@ python3 wallpapers/make-art-wallpapers.py mona_lisa great_wave   # 或只做指�
   (核小、誤差不亂散);色調比韌體的 Atkinson 平滑(不丟誤差)。多輪實機 A/B 後定案。
 - **autocontrast**:對比與可見度這一軸跟 dither 演算法無關,靠它補;不加會顯得淡、費眼。
 - **先算圖再打字**:整張一起 dither 會把文字的反鋸齒邊緣打散成雜點 → 字糊。標籤區只做就近取整。
-- **dither 放在最終 528×792、當最後一步**:裝置 1:1 不縮放顯示,dither 的點才精準落在像素上;
+- **dither 放在最終目標尺寸、當最後一步**:裝置 1:1 不縮放顯示,dither 的點才精準落在像素上;
   任何 dither 之後的重新取樣都會毀掉點陣(所以旋轉用整數無損 90°、文字最後才疊)。
 
 **驗證**:`make-art-wallpapers.py` 會用**與韌體相同的邏輯**把產出的 2-bit BMP 完整解碼回來,
@@ -136,7 +137,7 @@ python3 wallpapers/make-art-wallpapers.py mona_lisa great_wave   # 或只做指�
 ## 需求
 
 Python 3 + [Pillow](https://pypi.org/project/pillow/) + NumPy(`pip install pillow numpy`)。
-標籤用的是系統的 DejaVu Serif(`/usr/share/fonts/truetype/dejavu`)。
+標籤優先使用系統的 DejaVu Serif(`/usr/share/fonts/truetype/dejavu`)；macOS 沒有該字型時使用 Times New Roman。
 
 ## 授權
 

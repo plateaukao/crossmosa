@@ -11,6 +11,7 @@
 #include <string>
 
 #if defined(FREEINK_NET_WOLFSSL)
+#include <HTTPClient.h>
 #include <SecureHttpClient.h>
 
 extern "C" void wolfSSL_Arduino_Serial_Print(const char* const msg) { LOG_DBG("WOLFSSL", "%s", msg); }
@@ -50,6 +51,76 @@ bool isRedirect(int status) {
 }
 
 #if defined(FREEINK_NET_WOLFSSL)
+HttpDownloader::DownloadError runGetPlain(const std::string& url, Sink& sink) {
+  WiFiClient client;
+  HTTPClient http;
+  http.setConnectTimeout(HTTP_TIMEOUT_MS);
+  http.setTimeout(HTTP_TIMEOUT_MS);
+  http.setReuse(false);
+  http.setUserAgent(String("CrossMosa-ESP32-") + CROSSPOINT_VERSION);
+  http.setFollowRedirects(HTTPC_STRICT_FOLLOW_REDIRECTS);
+  http.setRedirectLimit(MAX_REDIRECTS);
+
+  if (!http.begin(client, url.c_str())) {
+    LOG_ERR("HTTP", "HTTP bad URL: %s", url.c_str());
+    snprintf(HttpDownloader::lastError, sizeof(HttpDownloader::lastError), "HTTP bad URL: %s", url.c_str());
+    return HttpDownloader::HTTP_ERROR;
+  }
+
+  LOG_DBG("HTTP", "HTTP GET: %s", url.c_str());
+  const int status = http.GET();
+  if (status < 0) {
+    LOG_ERR("HTTP", "HTTP request failed: %s (%s)", url.c_str(), HTTPClient::errorToString(status).c_str());
+    snprintf(HttpDownloader::lastError, sizeof(HttpDownloader::lastError), "HTTP request failed: %s", url.c_str());
+    http.end();
+    return HttpDownloader::HTTP_ERROR;
+  }
+  if (status != 200) {
+    LOG_ERR("HTTP", "HTTP unexpected status: %d", status);
+    snprintf(HttpDownloader::lastError, sizeof(HttpDownloader::lastError), "HTTP unexpected status: %d", status);
+    http.end();
+    return HttpDownloader::HTTP_ERROR;
+  }
+
+  const int contentLength = http.getSize();
+  sink.total = contentLength > 0 ? static_cast<size_t>(contentLength) : 0;
+  NetworkClient& stream = http.getStream();
+  uint8_t buffer[READ_CHUNK];
+  while (stream.connected() || stream.available() > 0) {
+    if (sink.cancelFlag && *sink.cancelFlag) {
+      http.end();
+      return HttpDownloader::ABORTED;
+    }
+    const int read = stream.read(buffer, sizeof(buffer));
+    if (read < 0) {
+      LOG_ERR("HTTP", "HTTP read failed after %zu bytes", sink.downloaded);
+      snprintf(HttpDownloader::lastError, sizeof(HttpDownloader::lastError), "HTTP read failed after %zu bytes",
+               sink.downloaded);
+      http.end();
+      return HttpDownloader::HTTP_ERROR;
+    }
+    if (read == 0) {
+      delay(2);
+      continue;
+    }
+    if (!sink.write(buffer, static_cast<size_t>(read))) {
+      http.end();
+      return HttpDownloader::FILE_ERROR;
+    }
+    sink.downloaded += static_cast<size_t>(read);
+    if (sink.progress && sink.total > 0) sink.progress(sink.downloaded, sink.total);
+  }
+
+  http.end();
+  if (sink.total > 0 && sink.downloaded != sink.total) {
+    LOG_ERR("HTTP", "HTTP incomplete: got %zu of %zu bytes", sink.downloaded, sink.total);
+    snprintf(HttpDownloader::lastError, sizeof(HttpDownloader::lastError), "HTTP incomplete: got %zu of %zu bytes",
+             sink.downloaded, sink.total);
+    return HttpDownloader::HTTP_ERROR;
+  }
+  return HttpDownloader::OK;
+}
+
 HttpDownloader::DownloadError runGetWolf(const std::string& startUrl, const std::string& username,
                                          const std::string& password, Sink& sink) {
   std::string url = startUrl;
@@ -73,7 +144,7 @@ HttpDownloader::DownloadError runGetWolf(const std::string& startUrl, const std:
       http.addHeader("Authorization", std::string("Basic ") + encoded.c_str());
     }
 
-    LOG_DBG("HTTP", "wolfSSL GET: %s", url.c_str());
+    LOG_DBG("HTTP", "wolfSSL HTTPS GET: %s", url.c_str());
     const int status = http.GET(
         [&http, &sink](const uint8_t* data, size_t len) {
           if (http.getStatus() != 200) return true;
@@ -87,8 +158,9 @@ HttpDownloader::DownloadError runGetWolf(const std::string& startUrl, const std:
 
     if (http.aborted()) return HttpDownloader::ABORTED;
     if (status < 0) {
-      LOG_ERR("HTTP", "wolfSSL request failed: %s", url.c_str());
-      snprintf(HttpDownloader::lastError, sizeof(HttpDownloader::lastError), "wolfSSL request failed: %s", url.c_str());
+      LOG_ERR("HTTP", "wolfSSL HTTPS request failed: %s", url.c_str());
+      snprintf(HttpDownloader::lastError, sizeof(HttpDownloader::lastError), "wolfSSL HTTPS request failed: %s",
+               url.c_str());
       return HttpDownloader::HTTP_ERROR;
     }
     if (isRedirect(status)) {
@@ -240,6 +312,7 @@ HttpDownloader::DownloadError runGet(const std::string& url, const std::string& 
 HttpDownloader::DownloadError runGetSecure(const std::string& url, const std::string& username,
                                            const std::string& password, Sink& sink) {
 #if defined(FREEINK_NET_WOLFSSL)
+  if (url.compare(0, 7, "http://") == 0) return runGetPlain(url, sink);
   return runGetWolf(url, username, password, sink);
 #else
   return runGet(url, username, password, sink);

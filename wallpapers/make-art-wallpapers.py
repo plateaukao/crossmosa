@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-make-art-wallpapers.py — 世界名畫清單批次產生 X3 待機壁紙(2-bit 原生四色,繞過韌體 dither)
+make-art-wallpapers.py — 世界名畫清單批次產生 X3/X4 待機壁紙(2-bit 原生四色,繞過韌體 dither)
 
 正式管線(2026-07-22 定案,經實機驗證與多輪 A/B):
-  原圖 → 灰階 → autocontrast(cutoff=1) → Lanczos 縮到 528×792(最終顯示解析度)
+  原圖 → 灰階 → autocontrast(cutoff=1) → Lanczos 縮到目標尺寸(最終顯示解析度)
        → Floyd-Steinberg dither(**僅畫作區**,4 階 0/85/170/255)
        → 疊乾淨標籤(黑底白字,就近取整不 dither = 「先算圖再打字」)
        → 橫式最後無損旋轉 90°(整數影像)
@@ -17,13 +17,14 @@ make-art-wallpapers.py — 世界名畫清單批次產生 X3 待機壁紙(2-bit 
     FS 暗部比 Jarvis 乾淨(小核、誤差不亂散);比韌體 Atkinson 色調更平滑(不丟誤差)。
   * **autocontrast**:對比/可見度這一軸跟演算法無關,靠它補;不加會顯得淡、費眼。
   * **先算圖再打字**:整張一起 dither 會把文字反鋸齒邊緣打散成雜點 → 文字糊。標籤區只做就近取整。
-  * **dither 在最終 528×792 解析度、當最後一步**:裝置 1:1 不縮放顯示,dither 點才精準落像素。
+  * **dither 在最終目標解析度、當最後一步**:裝置 1:1 不縮放顯示,dither 點才精準落像素。
 
-橫式構圖(依畫作原始比例)先在 792×528 排版再整張轉 90° 存 528×792;看時把裝置順時針轉 90°。
+橫式構圖(依畫作原始比例)先在目標橫向尺寸排版再整張轉 90° 存直向尺寸;看時把裝置順時針轉 90°。
 
 用法:
   python3 make-art-wallpapers.py            # 全部 50 張
   python3 make-art-wallpapers.py mona_lisa great_wave   # 只指定 slug
+  python3 make-art-wallpapers.py --size 480x800  # X4 portrait logical screen
 輸出:sleep/<slug>.bmp(2-bit)。先跑 fetch_sources.py 下載原圖。
 """
 import struct
@@ -42,7 +43,7 @@ OUT = HERE.parent / "sleep"
 BN = None  # 不再用 blue noise;保留欄位以防未來切換
 
 LEVELS = np.array([0, 85, 170, 255], dtype=np.float32)
-PORTRAIT = (528, 792)
+PORTRAIT = (528, 792)  # X3 portrait logical screen; override with --size for X4
 # 標籤(2026-07-22 定案,選用 subtle + 右下右對齊):畫作滿版,右下角疊「白字黑描邊」
 # 低調標籤,不佔黑條。字級/描邊刻意小=讀得到但不搶戲。文字在 dither 後疊、再就近取整保乾淨。
 CAP_MR, CAP_MB, CAP_GAP = 20, 18, 3           # 右邊距 / 下邊距 / 兩行間距
@@ -51,9 +52,16 @@ CAP_MR, CAP_MB, CAP_GAP = 20, 18, 3           # 右邊距 / 下邊距 / 兩行�
 # 舊值 19/13 的作者行只有 ~0.92mm ~10.6′,踩在人眼舒適線下 → 認不出,故加大。
 CAP_TITLE_SIZE, CAP_TITLE_STROKE = 21, 2      # 作品名(bold)字級 / 黑描邊粗細
 CAP_ARTIST_SIZE, CAP_ARTIST_STROKE = 16, 2    # 藝術家(regular)字級 / 黑描邊粗細
-FONT_DIR = Path("/usr/share/fonts/truetype/dejavu")
-FONT_BOLD = FONT_DIR / "DejaVuSerif-Bold.ttf"
-FONT_REG = FONT_DIR / "DejaVuSerif.ttf"
+FONT_PAIRS = [
+    (Path("/usr/share/fonts/truetype/dejavu/DejaVuSerif-Bold.ttf"),
+     Path("/usr/share/fonts/truetype/dejavu/DejaVuSerif.ttf")),
+    (Path("/System/Library/Fonts/Supplemental/Times New Roman Bold.ttf"),
+     Path("/System/Library/Fonts/Supplemental/Times New Roman.ttf")),
+]
+FONT_BOLD, FONT_REG = next(((bold, regular) for bold, regular in FONT_PAIRS
+                            if bold.exists() and regular.exists()), (None, None))
+if FONT_BOLD is None:
+    raise RuntimeError("no serif font found; install DejaVu Serif or Times New Roman")
 try:
     RES = Image.Resampling.LANCZOS
 except AttributeError:
@@ -210,7 +218,28 @@ def verify_2bit(path, expected_idx):
 
 
 def main():
-    slugs = sys.argv[1:]
+    global PORTRAIT
+    args = sys.argv[1:]
+    slugs = []
+    i = 0
+    while i < len(args):
+        arg = args[i]
+        if arg == "--size":
+            if i + 1 >= len(args):
+                raise SystemExit("--size needs WIDTHxHEIGHT, for example 480x800")
+            try:
+                width, height = (int(v) for v in args[i + 1].lower().split("x", 1))
+            except (ValueError, TypeError):
+                raise SystemExit("invalid --size; use WIDTHxHEIGHT, for example 480x800")
+            if width <= 0 or height <= 0:
+                raise SystemExit("--size dimensions must be positive")
+            PORTRAIT = (width, height)
+            i += 2
+            continue
+        if arg.startswith("--"):
+            raise SystemExit("unknown option: %s" % arg)
+        slugs.append(arg)
+        i += 1
     todo = [a for a in ARTWORKS if not slugs or a["slug"] in slugs]
     t0 = time.time()
     ok_all = True

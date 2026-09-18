@@ -2,6 +2,7 @@
 
 #include <functional>
 
+#include "I18nKeys.h"
 #include "activities/Activity.h"
 #include "util/ButtonNavigator.h"
 
@@ -20,10 +21,13 @@ class NetworkModeSelectionActivity final : public Activity {
   ButtonNavigator buttonNavigator;
 
   int selectedIndex = 0;
+  const bool includeCalibre;
+  const StrId headerTitle;
 
  public:
-  explicit NetworkModeSelectionActivity(GfxRenderer& renderer, MappedInputManager& mappedInput)
-      : Activity("NetworkModeSelection", renderer, mappedInput) {}
+  explicit NetworkModeSelectionActivity(GfxRenderer& renderer, MappedInputManager& mappedInput, bool includeCalibre = true,
+                                       StrId headerTitle = StrId::STR_FILE_TRANSFER)
+      : Activity("NetworkModeSelection", renderer, mappedInput), includeCalibre(includeCalibre), headerTitle(headerTitle) {}
   void onEnter() override;
   void onExit() override;
   void loop() override;
@@ -31,4 +35,7 @@ class NetworkModeSelectionActivity final : public Activity {
 
   void onModeSelected(NetworkMode mode);
   void onCancel();
+
+ private:
+  int menuItemCount() const { return includeCalibre ? 3 : 2; }
 };
