@@ -55,6 +55,10 @@ TextSettingsActivity::TextSettingsActivity(GfxRenderer& renderer, MappedInputMan
 void TextSettingsActivity::onEnter() {
   Activity::onEnter();
   ParsedText::setBoldBodyText(SETTINGS.boldBodyText != 0);  // v187：網頁設定頁可能改了它而沒經過這個旗標
+  // Fonts can be installed or removed from the web server while a book is
+  // open. Refresh here as well as in the main Settings activity so the
+  // reader's Text Settings picker never uses a stale family list.
+  sdFontSystem.refreshIfDirty();
 
   metrics_ = UITheme::getInstance().getMetrics();
   afterHeader = metrics_.topPadding + metrics_.headerHeight + metrics_.verticalSpacing;
