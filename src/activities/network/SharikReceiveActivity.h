@@ -36,6 +36,7 @@ class SharikReceiveActivity final : public Activity {
   bool udpActive = false;
   bool isApMode = false;
   bool didUnloadFonts_ = false;
+  bool openingReceivedBook_ = false;
   int selectedIndex = 0;
   std::vector<SharikOffer> offers;
   std::string statusMessage;

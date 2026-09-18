@@ -49,6 +49,7 @@ void SharikReceiveActivity::onEnter() {
   offers.clear();
   statusMessage.clear();
   errorMessage.clear();
+  openingReceivedBook_ = false;
   downloadProgress = 0;
   downloadTotal = 0;
   launchModeSelection();
@@ -85,7 +86,19 @@ void SharikReceiveActivity::onExit() {
       WiFi.disconnect(false);
     }
     delay(30);
-    silentRestart();
+    if (openingReceivedBook_) {
+      // Reader must receive the pending replaceActivity() below. A silent
+      // restart targets Home and would discard that route; Wi-Fi teardown is
+      // sufficient here because the reader can continue without a reboot.
+      WiFi.mode(WIFI_OFF);
+      if (didUnloadFonts_) {
+        extern SdCardFontSystem sdFontSystem;
+        sdFontSystem.ensureLoaded(renderer);
+        didUnloadFonts_ = false;
+      }
+    } else {
+      silentRestart();
+    }
   }
 }
 
@@ -314,7 +327,10 @@ void SharikReceiveActivity::receiveSelected() {
     startActivityForResult(
         std::make_unique<ConfirmationActivity>(renderer, mappedInput, tr(STR_OPEN_BOOK_NOW), destination),
         [this, destination](const ActivityResult& result) {
-          if (!result.isCancelled) onSelectBook(destination);
+          if (!result.isCancelled) {
+            openingReceivedBook_ = true;
+            onSelectBook(destination);
+          }
         });
   } else {
     setError(std::string(tr(STR_DOWNLOAD_FAILED)) +
