@@ -59,13 +59,10 @@ Wi-Fi 連線當機**，這裡先修掉了（細節見 CHANGELOG 的 1.0.0 節）
 
 ## 這是什麼
 
-版本:[`2.0.1`](https://github.com/anki630/crossmosa/releases/latest)
+版本:[`2.1.0`](https://github.com/anki630/crossmosa/releases/latest)
 
-> 🧪 **想試直排？** 有一個測試版 **2.1.0-beta.2**，加了直排（縦書き）閱讀。
-> 它是預發佈版，**第一次刷 CrossMosa 的人請不要從它開始**——
-> 先刷 2.0.1，確認一切正常之後再換上來。
-> 這一版的字型包有更新（拉丁擴充補齊），建議一起重新下載，舊的仍能用。
-> 詳情與已知限制見 [2.1.0-beta.2 的說明](https://github.com/anki630/crossmosa/releases/tag/v2.1.0-beta.2)。
+> **2.1.0 正式版**加入直排（縱書）閱讀、原版 X4 支援，以及 Sharik EPUB
+> 網路接收。完整變更與已知限制見 [CHANGELOG](CHANGELOG.md)。
 
 **我該刷哪一版？**
 
